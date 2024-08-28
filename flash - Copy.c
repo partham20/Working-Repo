@@ -1,11 +1,83 @@
+//#############################################################################
+//
+// FILE:   flashapi_ex1_programming.c
+//
+// TITLE:  Flash programming example
+//
+//! \addtogroup driver_example_list
+//! <h1> Flash Programming with AutoECC, DataAndECC, DataOnly and EccOnly </h1>
+//!
+//! This example demonstrates how to program Flash using API's following options
+//! 1. AutoEcc generation
+//! 2. DataOnly and EccOnly
+//! 3. DataAndECC
+//!
+//!
+//! \b External \b Connections \n
+//!  - None.
+//!
+//! \b Watch \b Variables \n
+//!  - None.
+//!
+//
+//#############################################################################
+// $Copyright:
+// Copyright (C) 2022 Texas Instruments Incorporated - http://www.ti.com
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+//
+//   Redistributions of source code must retain the above copyright
+//   notice, this list of conditions and the following disclaimer.
+//
+//   Redistributions in binary form must reproduce the above copyright
+//   notice, this list of conditions and the following disclaimer in the
+//   documentation and/or other materials provided with the
+//   distribution.
+//
+//   Neither the name of Texas Instruments Incorporated nor the names of
+//   its contributors may be used to endorse or promote products derived
+//   from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// $
+//#############################################################################
+
+//
+// Included Files
+//
+#include<stdio.h>
 #include "driverlib.h"
 #include "device.h"
+
+//
+// Include Flash API include file
+//
 #include "FlashTech_F28P55x_C28x.h"
+
+// Include Flash API example header file
+//
 #include "flash_programming_f28p55x.h"
 
+//
+// Defines
+//
 
-
-#define  WORDS_IN_FLASH_BUFFER    0x2BC
+//
+// Length (in 16-bit words) of data buffer used for program
+//
+#define  WORDS_IN_FLASH_BUFFER    0x400
 
 //
 // Globals
@@ -17,7 +89,7 @@
 #pragma  DATA_SECTION(Buffer,"DataBufferSection");
 uint16   Buffer[WORDS_IN_FLASH_BUFFER];
 uint32   *Buffer32 = (uint32 *)Buffer;
-bool a,b;
+
 
 //
 // Prototype of the functions used in this example
@@ -37,6 +109,8 @@ void Example_ProgramUsingDataAndECC(void);
 void ClearFSMStatus(void);
 void Example_ProgramAllBankUsingAutoECC(void);
 
+
+void Example_ReadFlash(uint32_t startAddress, uint32_t length);
 //
 // Main
 //
@@ -91,6 +165,8 @@ void main(void)
     //
     // Example is done here
     //
+
+    puts("done");
     Example_Done();
 }
 
@@ -188,10 +264,11 @@ void Example_CallFlashAPI(void)
         Example_Error(oReturnCheck);
     }
 
+    Example_EraseSector();
     //
     // Erase bank before programming
     //
-    Example_EraseBanks();
+    //Example_EraseBanks();
 
     //
     // Fill a buffer with data to program into the flash.
@@ -206,42 +283,45 @@ void Example_CallFlashAPI(void)
     //
     Example_ProgramUsingAutoECC();
 
+
+
+     Example_ReadFlash( FlashBank4StartAddress , 0x400U);
     //
     // Erase bank before programming
     //
-    Example_EraseBanks();
+    //Example_EraseBanks();
 
     //
     // Program the sector using DataOnly and ECCOnly options
     //
-    Example_ProgramUsingDataOnlyECCOnly();
+   // Example_ProgramUsingDataOnlyECCOnly();
 
     //
     // Erase the sector before programming
     //
-    Example_EraseSector();
+
 
     //
     // Program Bank using AutoECC option
     //
     // Note that executing entire bank needs a special flash API library -
-	// for this 
-	Example_ProgramBankUsingAutoECC();
+    // for this
+  //  Example_ProgramBankUsingAutoECC();
 
     //
     // Erase bank before programming
     //
-    Example_EraseBanks();
+   // Example_EraseBanks();
 
     //
     // Program the sector using DataAndECC option
     //
-    Example_ProgramUsingDataAndECC();
+   // Example_ProgramUsingDataAndECC();
 
     //
     // Erase the sector for cleaner exit from the example.
     //
-    Example_EraseSector();
+    //Example_EraseSector();
 
 
 }
@@ -258,10 +338,6 @@ void Example_CallFlashAPI(void)
 #else
 #pragma CODE_SECTION(Example_ProgramUsingAutoECC, ".TI.ramfunc");
 #endif
-
-
-
-
 void Example_ProgramUsingAutoECC(void)
 {
     uint32 u32Index = 0;
@@ -270,10 +346,6 @@ void Example_ProgramUsingAutoECC(void)
     Fapi_FlashStatusType  oFlashStatus;
     Fapi_FlashStatusWordType  oFlashStatusWord;
 
-
-    for (i = 0; i < WORDS_IN_FLASH_BUFFER; i++) {
-           Buffer[i] = i;
-       }
     //
     // A data buffer of max 8 16-bit words can be supplied to the program
     // function.
@@ -297,7 +369,7 @@ void Example_ProgramUsingAutoECC(void)
     // Note that data buffer (Buffer) is aligned on 64-bit boundary for verify
     // reasons.
     //
-    // Monitor ECC address for the sector below while programming with 
+    // Monitor ECC address for the sector below while programming with
     // AutoEcc mode.
     //
     // In this example, the number of bytes specified in the flash buffer
@@ -305,18 +377,23 @@ void Example_ProgramUsingAutoECC(void)
     // ECC.
     //
 
-    for(i=0, u32Index = FlashBank4StartAddress; (u32Index < (FlashBank4StartAddress + WORDS_IN_FLASH_BUFFER)); i+= 8, u32Index+= 8)
+    for(i=0, u32Index = FlashBank4StartAddress;
+       (u32Index < (FlashBank4StartAddress + WORDS_IN_FLASH_BUFFER));
+       i+= 8, u32Index+= 8)
     {
         ClearFSMStatus();
 
-        /*
-Enable program/erase protection for select sectors where this example is located CMDWEPROTA is applicable for sectors 0-31 Bits 0-11 of CMDWEPROTB is applicable for sectors 32-127, each bit represents a group of 8 sectors, e.g bit 0 represents sectors 32-39, bit 1 represents sectors 40-47, etc      */
+        // Enable program/erase protection for select sectors where this example is
+        // located
+        // CMDWEPROTA is applicable for sectors 0-31
+        // Bits 0-11 of CMDWEPROTB is applicable for sectors 32-127, each bit represents
+        // a group of 8 sectors, e.g bit 0 represents sectors 32-39, bit 1 represents
+        // sectors 40-47, etc
+        Fapi_setupBankSectorEnable(FLASH_WRAPPER_PROGRAM_BASE+FLASH_O_CMDWEPROTA, 0xFFFFFF00);
+        Fapi_setupBankSectorEnable(FLASH_WRAPPER_PROGRAM_BASE+FLASH_O_CMDWEPROTB, 0x00000003);
 
-        Fapi_setupBankSectorEnable(FLASH_WRAPPER_PROGRAM_BASE+FLASH_O_CMDWEPROTA, 0xFFFFFFFE);
-        Fapi_setupBankSectorEnable(FLASH_WRAPPER_PROGRAM_BASE+FLASH_O_CMDWEPROTB, 0xFFFFFFFF);
 
-
-        oReturnCheck = Fapi_issueProgrammingCommand((uint32 *)u32Index, Buffer+i,
+        oReturnCheck = Fapi_issueProgrammingCommand((uint32 *)u32Index,Buffer+i,
                                                8, 0, 0, Fapi_AutoEccGeneration);
 
         //
@@ -353,16 +430,10 @@ Enable program/erase protection for select sectors where this example is located
                                      4, (uint32 *)(uint32)(Buffer + i),
                                      &oFlashStatusWord);
 
-        if(oReturnCheck == Fapi_Status_Success)
-        {
-            b=true;
-
-        }
-
+        Fapi_setupBankSectorEnable(FLASH_WRAPPER_PROGRAM_BASE+FLASH_O_CMDWEPROTA, 0xFFFFFFFF);
 
         if(oReturnCheck != Fapi_Status_Success)
         {
-
             //
             // Check Flash API documentation for possible errors
             //
@@ -420,7 +491,7 @@ void Example_ProgramBankUsingAutoECC(void)
     // In this example, Flash Bank 0 is programmed along with auto-generated
     // ECC.
     //
-    for(sector = FlashBank2StartAddress; sector < FlashBank2EndAddress;
+    for(sector = FlashBank4StartAddress; sector < FlashBank4EndAddress;
         sector += Sector2KB_u16length)
     {
         for(i=0, u32Index = sector;
@@ -543,8 +614,8 @@ void Example_ProgramUsingDataOnlyECCOnly(void)
     // along with the specified ECC.
     //
 
-    for(i=0, u32Index = FlashBank2StartAddress;
-       (u32Index < (FlashBank2StartAddress + WORDS_IN_FLASH_BUFFER));
+    for(i=0, u32Index = FlashBank4StartAddress;
+       (u32Index < (FlashBank4StartAddress + WORDS_IN_FLASH_BUFFER));
        i+= 8, u32Index+= 8)
     {
         ClearFSMStatus();
@@ -691,8 +762,8 @@ void Example_ProgramUsingDataAndECC(void)
     // along with the specified ECC.
     //
 
-    for(i=0, u32Index = FlashBank2StartAddress;
-       (u32Index < (FlashBank2StartAddress + WORDS_IN_FLASH_BUFFER));
+    for(i=0, u32Index = FlashBank4StartAddress;
+       (u32Index < (FlashBank4StartAddress + WORDS_IN_FLASH_BUFFER));
        i+= 8, u32Index+= 8)
     {
         ClearFSMStatus();
@@ -796,7 +867,7 @@ void Example_EraseSector(void)
         // a group of 8 sectors, e.g bit 0 represents sectors 32-39, bit 1 represents
         // sectors 40-47, etc      
         Fapi_setupBankSectorEnable(FLASH_WRAPPER_PROGRAM_BASE+FLASH_O_CMDWEPROTA, 0xFFFFFF00);
-        Fapi_setupBankSectorEnable(FLASH_WRAPPER_PROGRAM_BASE+FLASH_O_CMDWEPROTB, 0x00000003);
+        Fapi_setupBankSectorEnable(FLASH_WRAPPER_PROGRAM_BASE+FLASH_O_CMDWEPROTB, 0x00000000);
 
 
     //
@@ -804,7 +875,7 @@ void Example_EraseSector(void)
     // Erase Sector 0
     //
     oReturnCheck = Fapi_issueAsyncCommandWithAddress(Fapi_EraseSector,
-                   (uint32 *)FlashBank2StartAddress);
+                   (uint32 *)FlashBank4StartAddress);
     //
     // Wait until FSM is done with erase sector operation
     //
@@ -837,7 +908,7 @@ void Example_EraseSector(void)
     //
     // Verify that Sector0 is erased
     //
-    oReturnCheck = Fapi_doBlankCheck((uint32 *)FlashBank2StartAddress,
+    oReturnCheck = Fapi_doBlankCheck((uint32 *)FlashBank4StartAddress,
                    Sector2KB_u32length,
                    &oFlashStatusWord);
     if(oReturnCheck != Fapi_Status_Success)
@@ -879,7 +950,7 @@ void Example_EraseBanks(void)
     Fapi_setupBankSectorEnable(FLASH_WRAPPER_PROGRAM_BASE+FLASH_O_CMDWEPROTA, 0xFFFFFF00);
     Fapi_setupBankSectorEnable(FLASH_WRAPPER_PROGRAM_BASE+FLASH_O_CMDWEPROTB, 0x00000003);
 
-    u32CurrentAddress = FlashBank2StartAddress;
+    u32CurrentAddress = FlashBank4StartAddress;
 
     //Issue bank erase command
     oReturnCheck = Fapi_issueBankEraseCommand((uint32 *)u32CurrentAddress);
@@ -912,7 +983,7 @@ void Example_EraseBanks(void)
     // Verify that Bank 2 is erased.
     // The Erase command itself does a verify as it goes.
     // Hence erase verify by CPU reads (Fapi_doBlankCheck()) is optional.
-    u32CurrentAddress = FlashBank2StartAddress;
+    u32CurrentAddress = FlashBank4StartAddress;
     oReturnCheck = Fapi_doBlankCheck((uint32 *)u32CurrentAddress,
                    (8*Sector2KB_u32length),
                    &oFlashStatusWord);
@@ -923,7 +994,7 @@ void Example_EraseBanks(void)
         Example_Error(oReturnCheck);
     }
 
-   u32CurrentAddress = FlashBank2StartAddress + 0xC000;
+   u32CurrentAddress = FlashBank4StartAddress + 0xC000;
           oReturnCheck = Fapi_doBlankCheck((uint32 *)u32CurrentAddress,
                          (80*Sector2KB_u32length),
                          &oFlashStatusWord);
@@ -973,3 +1044,22 @@ void ECC_Fail(void)
 //
 // End of File
 //
+
+void Example_ReadFlash(uint32_t startAddress, uint32_t length)
+{
+    uint32_t *flashPtr = (uint32_t *)startAddress;
+    int buffer[32];
+    uint32_t i;
+
+    for ( i = 0; i < length; i++)
+    {
+        // Read the content from flash memory
+        uint32_t data = *(flashPtr + i);
+
+        // Convert the data to a string and print it as an integer
+                snprintf(buffer, sizeof(buffer), "Address: 0x%08X, Data: %u", startAddress + (i * sizeof(uint32_t)), data);
+                puts(buffer);
+
+    }
+}
+
